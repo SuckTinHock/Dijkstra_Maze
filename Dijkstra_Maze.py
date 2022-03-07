@@ -2,7 +2,6 @@ import tkinter
 import tkinter.messagebox
 import tkinter.font
 
-import shapely.geometry.polygon
 from shapely.geometry import Point, LineString
 from shapely.geometry.polygon import Polygon
 from queue import PriorityQueue
@@ -89,6 +88,8 @@ class GUI:
                                    font=myFont)
         self.Visible = tkinter.Button(self.top_frame, text="Visible", command=self.Visible_Func, padx=40, pady=10,
                                       font=myFont)
+        self.ClearButton = tkinter.Button(self.top_frame, text="Clear", command=self.Clear_Func, padx=40, pady=10,
+                                      font=myFont)
         self.value = tkinter.StringVar()
         self.ResultDes = tkinter.Label(self.bottom_frame, text="Shortest Path: ", font=myFont)
         self.Result = tkinter.Label(self.bottom_frame, textvariable=self.value, font=myFont)
@@ -98,6 +99,7 @@ class GUI:
         self.Find.pack(side="left")
         self.Visible.pack(side="left")
         self.Find.pack(side="left")
+        self.ClearButton.pack(side="left")
         self.canvas.pack()
         self.ResultDes.pack(side="left")
         self.Result.pack(side="left")
@@ -121,6 +123,9 @@ class GUI:
 
 
         tkinter.mainloop()
+
+    def Clear_Func(self):
+        self.Clear()
 
     def Map_1(self):
         self.Clear()
