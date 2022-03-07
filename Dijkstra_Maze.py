@@ -76,11 +76,20 @@ class GUI:
         self.Shortest_Path = []
         self.appear = False
         self.Find_Appear = False
+
+        #Khai bao Draw_Mode
+        self.Line_List_fake = []
+        self.Line_Data_fake = []
+        self.Point_Data_fake = []
+
         # Khai bao UI
         self.main_window = tkinter.Tk()
         self.top_frame = tkinter.Frame(self.main_window)
         self.mid_frame = tkinter.Frame(self.main_window)
         self.bottom_frame = tkinter.Frame(self.main_window)
+        self.value = tkinter.StringVar()
+        self.DrawMode = tkinter.StringVar()
+        self.DrawMode.set("Draw Mode: Off")
 
         self.Map = tkinter.Button(self.top_frame, text="Map 1", command=self.Map_1, padx=40, pady=10, font=myFont)
         self.Map2 = tkinter.Button(self.top_frame, text="Map 2", command=self.Map_2, padx=40, pady=10, font=myFont)
@@ -90,7 +99,10 @@ class GUI:
                                       font=myFont)
         self.ClearButton = tkinter.Button(self.top_frame, text="Clear", command=self.Clear_Func, padx=40, pady=10,
                                       font=myFont)
-        self.value = tkinter.StringVar()
+        self.Draw = tkinter.Button(self.top_frame, textvariable=self.DrawMode, command=self.Draw_Func, padx=40, pady=10,
+                                      font=myFont)
+        self.Undo = tkinter.Button(self.top_frame, text="Draw Undo", command=self.Undo_Func, padx=40, pady=10,
+                                          font=myFont)
         self.ResultDes = tkinter.Label(self.bottom_frame, text="Shortest Path: ", font=myFont)
         self.Result = tkinter.Label(self.bottom_frame, textvariable=self.value, font=myFont)
         self.canvas = tkinter.Canvas(self.mid_frame, width=1096, height=588, bg="black")
@@ -100,6 +112,8 @@ class GUI:
         self.Visible.pack(side="left")
         self.Find.pack(side="left")
         self.ClearButton.pack(side="left")
+        self.Draw.pack(side="left")
+        self.Undo.pack(side="left")
         self.canvas.pack()
         self.ResultDes.pack(side="left")
         self.Result.pack(side="left")
@@ -124,10 +138,57 @@ class GUI:
 
         tkinter.mainloop()
 
+    def Undo_Func(self):
+        if len(self.Point_Data_fake):
+            self.canvas.delete(self.Point_Data_fake[-1])
+            self.Point_Data_fake.pop(-1)
+        if len(self.shape) > 0:
+            self.shape.pop(-1)
+            self.shape.pop(-1)
+        if len(self.Line_List_fake) > 0:
+            self.Line_List_fake.pop(-1)
+        if len(self.Line_Data_fake) > 0:
+            self.canvas.delete(self.Line_Data_fake[-1])
+            self.Line_Data_fake.pop(-1)
+        if len(self.shape) > 0:
+            self.canvas.delete(self.Point_Data_fake[-1])
+            self.Point_Data_fake.pop(-1)
+            self.Point_Data_fake.append(self.canvas.create_oval(self.shape[-2] - 5, self.shape[-1] - 5,
+                                                                self.shape[-2] + 5, self.shape[-1] + 5, fill="white"))
+
+    def Draw_Func(self):
+        if self.DrawMode.get() == "Draw Mode: Off":
+            self.DrawMode.set("Draw Mode: On")
+            self.Clear()
+        else:
+
+            if len(self.shape) >= 6 and not self.crosscheck(LineString([[self.shape[0], self.shape[1]], [self.shape[-2], self.shape[-1]]]), self.Line_List_fake, 1):
+                tkinter.messagebox.showinfo('Response', "The first point and the last point create a line that intersects other lines of your polyon \n Please add or delete some points to fix this issue!")
+                return
+            if len(self.shape) < 6:
+                self.shape.clear()
+
+            self.DrawMode.set("Draw Mode: Off")
+            self.Delete_Fake_Data()
+            self.create_map()
+
+    def Delete_Fake_Data(self):
+        for points in self.Point_Data_fake:
+            self.canvas.delete(points)
+        for lines in self.Line_Data_fake:
+            self.canvas.delete(lines)
+        self.Line_List_fake.clear()
+        self.Line_Data_fake.clear()
+        self.Point_Data_fake.clear()
+
     def Clear_Func(self):
+        if self.DrawMode.get() == "Draw Mode: On":
+            self.Delete_Fake_Data()
         self.Clear()
 
     def Map_1(self):
+        if self.DrawMode.get() == "Draw Mode: On":
+            return
         self.Clear()
         with open("map1.txt") as file:
             shape_list = str(file.readline()).split()
@@ -136,6 +197,8 @@ class GUI:
         self.create_map()
 
     def Map_2(self):
+        if self.DrawMode.get() == "Draw Mode: On":
+            return
         self.Clear()
         with open("map2.txt") as file:
             shape_list = str(file.readline()).split()
@@ -144,6 +207,8 @@ class GUI:
         self.create_map()
 
     def create_map(self):
+        if len(self.shape) == 0:
+            return
         for i in range(0, len(self.shape) // 2):
             self.p.append([self.shape[i * 2], self.shape[i * 2 + 1]])
         self.polygon_data = self.canvas.create_polygon(self.shape, fill="red")
@@ -156,12 +221,15 @@ class GUI:
                         self.Line_List.append([j, i])
         for i in range(len(self.p) - 1):
             self.Line_List.append([i, i + 1])
+        self.Line_List.append([0, len(self.p) - 1])
         self.N = len(self.p)
         self.G = Graph(self.N + 2)
         for line in self.Line_List:
             self.G.addEdge(line[0], line[1], ((self.p[line[0]][0] - self.p[line[1]][0]) ** 2 + (self.p[line[0]][1] - self.p[line[1]][1]) ** 2) ** (1 / 2))
 
     def Find_Func(self):
+        if self.DrawMode.get() == "Draw Mode: On":
+            return
         if not self.shape:
             tkinter.messagebox.showinfo('Response', "Please choose a map!")
             return
@@ -172,16 +240,18 @@ class GUI:
         self.find_shortest(self.N, self.N + 1)
 
     def Visible_Func(self):
+        if self.DrawMode.get() == "Draw Mode: On":
+            return
         self.appear = not self.appear
         if self.appear:
             for line in self.Line_List:
                 self.Line_Data.append(self.canvas.create_line(self.p[line[0]], self.p[line[1]], fill="white"))
             for line in self.Input_Line_List:
                 self.Input_Line_Data.append(
-                    self.canvas.create_line(self.current_input_coordinate, self.p[line], fill="white"))
+                    self.canvas.create_line(self.current_input_coordinate, self.p[line], fill="yellow"))
             for line in self.Output_Line_List:
                 self.Output_Line_Data.append(
-                    self.canvas.create_line(self.current_output_coordinate, self.p[line], fill="white"))
+                    self.canvas.create_line(self.current_output_coordinate, self.p[line], fill="yellow"))
             if self.current_input and self.current_output and not LineString(
                     [self.current_input_coordinate, self.current_output_coordinate]).crosses(self.polygon):
                 self.Direct_Connect()
@@ -212,7 +282,7 @@ class GUI:
                 lists.append(i)
                 self.G.addEdge(idx, i, ((point[0] - self.p[i][0]) ** 2 + (point[1] - self.p[i][1]) ** 2) ** (1 / 2))
                 if self.appear:
-                    data.append(self.canvas.create_line(self.p[i][0], self.p[i][1], point[0], point[1], fill="white"))
+                    data.append(self.canvas.create_line(self.p[i][0], self.p[i][1], point[0], point[1], fill="yellow"))
 
     def Direct_Connect(self):
         for line in self.Direct:
@@ -227,25 +297,56 @@ class GUI:
                                             self.current_output_coordinate[1],
                                             fill="white"))
 
+    def crosscheck(self, line, Line_List, start):
+        if len(Line_List) <= 1:
+            return True
+
+        for id in range(start, len(Line_List) - 1):
+            if line.intersects(Line_List[id]):
+                return False
+        return True
+
     def pressed1(self, event):
-        point = Point(event.x, event.y)
-        if self.polygon.contains(point) and str(event.widget) == ".!frame2.!canvas":
-            if self.current_input:
-                for line in self.Input_Line_Data:
-                    self.canvas.delete(line)
-                self.canvas.delete(self.current_input)
-                for edge in self.G.graph[self.N]:
-                    [v, w] = edge
-                    self.G.graph[v].remove([self.N, w])
-                self.G.graph[self.N].clear()
-            self.start = [event.x, event.y]
-            self.current_input = self.canvas.create_oval(event.x - 5, event.y - 5, event.x + 5, event.y + 5,
-                                                         fill="blue")
-            self.current_input_coordinate = [event.x, event.y]
-            self.connect(self.Input_Line_List, self.Input_Line_Data, self.N)
-            self.find_shortest(self.N, self.N+1)
+        if self.DrawMode.get() == "Draw Mode: On":
+            if str(event.widget) == ".!frame2.!canvas":
+                if len(self.shape) == 0:
+                    self.shape.append(event.x)
+                    self.shape.append(event.y)
+                    self.Point_Data_fake.append(self.canvas.create_oval(event.x - 5, event.y - 5, event.x + 5, event.y + 5, fill="white"))
+                else:
+                    CheckPoint = [self.shape[-2], self.shape[-1]]
+                    line = LineString([CheckPoint, [event.x, event.y]])
+                    if self.crosscheck(line, self.Line_List_fake, 0):
+                        self.canvas.delete(self.Point_Data_fake[-1])
+                        self.Point_Data_fake.pop(-1)
+                        self.Point_Data_fake.append(self.canvas.create_oval(CheckPoint[0] - 5, CheckPoint[1] - 5, CheckPoint[0] + 5, CheckPoint[1] + 5, fill="purple"))
+                        self.Point_Data_fake.append(self.canvas.create_oval(event.x - 5, event.y - 5, event.x + 5, event.y + 5, fill="white"))
+                        self.Line_List_fake.append(line)
+                        self.Line_Data_fake.append(self.canvas.create_line(CheckPoint, [event.x, event.y], fill="white", width=5))
+                        self.shape.append(event.x)
+                        self.shape.append(event.y)
+        else:
+            point = Point(event.x, event.y)
+            if self.polygon.contains(point) and str(event.widget) == ".!frame2.!canvas":
+                if self.current_input:
+                    for line in self.Input_Line_Data:
+                        self.canvas.delete(line)
+                    self.canvas.delete(self.current_input)
+                    for edge in self.G.graph[self.N]:
+                        [v, w] = edge
+                        self.G.graph[v].remove([self.N, w])
+                    self.G.graph[self.N].clear()
+                self.start = [event.x, event.y]
+                self.current_input = self.canvas.create_oval(event.x - 5, event.y - 5, event.x + 5, event.y + 5,
+                                                             fill="blue")
+                self.current_input_coordinate = [event.x, event.y]
+                self.connect(self.Input_Line_List, self.Input_Line_Data, self.N)
+                self.find_shortest(self.N, self.N+1)
 
     def pressed3(self, event):
+        if self.DrawMode.get() == "Draw Mode: On":
+            return
+
         point = Point(event.x, event.y)
         if self.polygon.contains(point) and str(event.widget) == ".!frame2.!canvas":
             if self.current_output:
