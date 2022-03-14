@@ -84,6 +84,7 @@ class GUI:
 
         # Khai bao UI
         self.main_window = tkinter.Tk()
+        self.main_window.title("Dijkstra Visualization GUI")
         self.top_frame = tkinter.Frame(self.main_window)
         self.mid_frame = tkinter.Frame(self.main_window)
         self.bottom_frame = tkinter.Frame(self.main_window)
